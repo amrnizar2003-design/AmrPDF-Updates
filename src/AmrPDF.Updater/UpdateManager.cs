@@ -57,7 +57,8 @@ public static class UpdateManager
             Directory.CreateDirectory(updateRoot);
             string zipPath = Path.Combine(updateRoot, "update.zip.download");
             await DownloadAsync(http, manifest.PackageUrl, zipPath, manifest.SizeBytes);
-            string actualHash = Convert.ToHexString(await SHA256.HashDataAsync(File.OpenRead(zipPath))).ToLowerInvariant();
+            await using var hashStream = File.OpenRead(zipPath);
+            string actualHash = Convert.ToHexString(await SHA256.HashDataAsync(hashStream)).ToLowerInvariant();
             if (!actualHash.Equals(manifest.Sha256, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidDataException("بصمة حزمة التحديث غير مطابقة.");
 
@@ -136,7 +137,7 @@ public static class UpdateManager
         string script = Path.Combine(Path.GetTempPath(), "AmrPDF-Update-" + Guid.NewGuid().ToString("N") + ".ps1");
         string body = $"$ErrorActionPreference='Stop'\n" +
                       $"Wait-Process -Id {pid} -ErrorAction SilentlyContinue\n" +
-                      $"Copy-Item -LiteralPath '{Ps(stage)}\\*' -Destination '{Ps(install)}' -Recurse -Force\n" +
+                      $"Get-ChildItem -LiteralPath '{Ps(stage)}' -Force | Copy-Item -Destination '{Ps(install)}' -Recurse -Force\n" +
                       $"Start-Process -FilePath '{Ps(exe)}'\n" +
                       $"Remove-Item -LiteralPath '{Ps(stage)}' -Recurse -Force -ErrorAction SilentlyContinue\n" +
                       "$me=$MyInvocation.MyCommand.Path; Start-Sleep -Milliseconds 300; Remove-Item -LiteralPath $me -Force -ErrorAction SilentlyContinue\n";
