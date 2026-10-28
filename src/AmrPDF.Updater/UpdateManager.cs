@@ -6,6 +6,8 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
 
 namespace AmrPDF.Updater;
 
@@ -22,6 +24,35 @@ public static class UpdateManager
     public static void Initialize()
     {
         if (Interlocked.Exchange(ref _started, 1) != 0) return;
+        Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
+        {
+            var window = Application.Current.MainWindow;
+            if (window is null) return;
+            window.PreviewKeyDown += (_, e) =>
+            {
+                if (e.Key == Key.U && Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift))
+                {
+                    e.Handled = true;
+                    _ = CheckAsync(manual: true);
+                }
+            };
+            if (window.Content is Panel root)
+            {
+                var button = new Button
+                {
+                    Content = "البحث عن تحديثات",
+                    ToolTip = "البحث الآن عن تحديثات Amr.PDF (Ctrl+Shift+U)",
+                    HorizontalAlignment = HorizontalAlignment.Right,
+                    VerticalAlignment = VerticalAlignment.Top,
+                    Width = 145,
+                    Height = 32,
+                    Margin = new Thickness(0, 10, 14, 0)
+                };
+                button.Click += (_, _) => { _ = CheckAsync(manual: true); };
+                Panel.SetZIndex(button, 10000);
+                root.Children.Add(button);
+            }
+        }));
         _ = Task.Run(async () =>
         {
             try
