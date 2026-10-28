@@ -8,3 +8,4 @@ Official public update channel for **Amr.PDF for Windows**.
 
 Stable channel metadata: [`stable.json`](stable.json)
 
+Build status: Windows updater pipeline enabled.
