@@ -8,5 +8,6 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="dnlib" Version="4.5.0" />
+    <ProjectReference Include="../AmrPDF.Updater/AmrPDF.Updater.csproj" />
   </ItemGroup>
 </Project>
