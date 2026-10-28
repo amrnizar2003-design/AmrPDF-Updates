@@ -3,6 +3,8 @@ name: Build Amr.PDF updater
 on:
   push:
     branches: [ main ]
+    paths-ignore:
+      - 'stable.json'
   workflow_dispatch:
 
 permissions:
