@@ -1,8 +1,1 @@
-{
-  "version": "1.2.18",
-  "packageUrl": "https://github.com/amrnizar2003-design/AmrPDF-Updates/releases/download/v1.2.18/Amr.PDF-Update-v1.2.18.zip",
-  "sha256": "4907c6807d31a0aceaf11de9f457c5dd2959360bf48711c6fefa0c5b7bc8db73",
-  "sizeBytes": 374078,
-  "mandatory": false,
-  "notesAr": "إضافة نظام التحديث التلقائي الآمن."
-}
+{"sizeBytes":497360,"packageUrl":"https://github.com/amrnizar2003-design/AmrPDF-Updates/releases/download/v1.2.19/Amr.PDF-Update-v1.2.19.zip","notesAr":"تحسين تحويل DWG/DXF إلى PDF وإضافة خيار الرجوع للإصدار السابق بعد التحديث.","version":"1.2.19","mandatory":false,"sha256":"68e69ca179616dea27bf4723816ed7f971fb87e4d4ca3019cd6d3be9a60ed6cc"}
