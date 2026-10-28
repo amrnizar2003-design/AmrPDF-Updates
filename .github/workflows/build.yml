@@ -1,0 +1,62 @@
+name: Build Amr.PDF updater
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Restore base assembly
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force build | Out-Null
+          $joined=[IO.File]::Create('build/Amr.PDF.dll.gz')
+          Get-ChildItem 'base/chunks/Amr.PDF.dll.gz.part*' | Sort-Object Name | ForEach-Object {
+            $bytes=[IO.File]::ReadAllBytes($_.FullName); $joined.Write($bytes,0,$bytes.Length)
+          }
+          $joined.Dispose()
+          $input=[IO.File]::OpenRead('build/Amr.PDF.dll.gz')
+          $gzip=[IO.Compression.GZipStream]::new($input,[IO.Compression.CompressionMode]::Decompress)
+          $output=[IO.File]::Create('build/Amr.PDF.dll'); $gzip.CopyTo($output)
+          $output.Dispose(); $gzip.Dispose(); $input.Dispose()
+          Copy-Item 'base/Amr.PDF.deps.json' 'build/Amr.PDF.deps.json'
+      - name: Build updater and patch application
+        shell: pwsh
+        run: |
+          dotnet build src/AmrPDF.Updater/AmrPDF.Updater.csproj -c Release
+          dotnet run --project src/Patcher/Patcher.csproj -c Release -- 'build/Amr.PDF.dll' 'build/Amr.PDF.patched.dll'
+          Move-Item -Force 'build/Amr.PDF.patched.dll' 'build/Amr.PDF.dll'
+          Copy-Item 'src/AmrPDF.Updater/bin/Release/net10.0-windows/AmrPDF.Updater.dll' 'build/AmrPDF.Updater.dll'
+      - name: Register updater dependency
+        shell: pwsh
+        run: |
+          $p='build/Amr.PDF.deps.json'
+          $j=Get-Content $p -Raw | ConvertFrom-Json -Depth 100
+          $target=$j.targets.PSObject.Properties | Where-Object {$_.Name -like '*win-x64*'} | Select-Object -First 1
+          $app=$target.Value.'Amr.PDF/1.0.0'
+          $app.dependencies | Add-Member -NotePropertyName 'AmrPDF.Updater' -NotePropertyValue '1.2.18' -Force
+          $target.Value | Add-Member -NotePropertyName 'AmrPDF.Updater/1.2.18' -NotePropertyValue ([pscustomobject]@{runtime=[pscustomobject]@{'AmrPDF.Updater.dll'=[pscustomobject]@{assemblyVersion='1.2.18.0';fileVersion='1.2.18.0'}}}) -Force
+          $j.libraries | Add-Member -NotePropertyName 'AmrPDF.Updater/1.2.18' -NotePropertyValue ([pscustomobject]@{type='project';serviceable=$false;sha512=''}) -Force
+          $j | ConvertTo-Json -Depth 100 -Compress | Set-Content $p -Encoding utf8NoBOM
+      - name: Create delta package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force artifact/package | Out-Null
+          Copy-Item build/Amr.PDF.dll,build/Amr.PDF.deps.json,build/AmrPDF.Updater.dll artifact/package/
+          Compress-Archive -Path artifact/package/* -DestinationPath artifact/Amr.PDF-Update-v1.2.18.zip -CompressionLevel Optimal
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AmrPDF-Updater-Build
+          path: artifact/Amr.PDF-Update-v1.2.18.zip
+          if-no-files-found: error
+
