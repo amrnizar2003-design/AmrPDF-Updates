@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -59,4 +59,13 @@ jobs:
           name: AmrPDF-Updater-Build
           path: artifact/Amr.PDF-Update-v1.2.18.zip
           if-no-files-found: error
-
+      - name: Publish update package
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if (gh release view v1.2.18 --repo "${{ github.repository }}" 2>$null) {
+            gh release upload v1.2.18 artifact/Amr.PDF-Update-v1.2.18.zip --clobber --repo "${{ github.repository }}"
+          } else {
+            gh release create v1.2.18 artifact/Amr.PDF-Update-v1.2.18.zip --title "Amr.PDF 1.2.18" --notes "التحديث الأول الذي يضيف قناة التحديث التلقائي الآمنة." --repo "${{ github.repository }}"
+          }
