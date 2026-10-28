@@ -8,6 +8,7 @@ using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 
 namespace AmrPDF.Updater;
 
@@ -36,37 +37,106 @@ public static class UpdateManager
                     _ = CheckAsync(manual: true);
                 }
             };
-            if (window.Content is Panel root)
-            {
-                var button = new Button
-                {
-                    Content = "البحث عن تحديثات",
-                    ToolTip = "البحث الآن عن تحديثات Amr.PDF (Ctrl+Shift+U)",
-                    HorizontalAlignment = HorizontalAlignment.Right,
-                    VerticalAlignment = VerticalAlignment.Top,
-                    Width = 145,
-                    Height = 32,
-                    Margin = new Thickness(0, 10, 14, 0)
-                };
-                button.Click += (_, _) => { _ = CheckAsync(manual: true); };
-                Panel.SetZIndex(button, 10000);
-                root.Children.Add(button);
-            }
+            // Buttons belong inside Settings, not in the MainWindow overlay.
+            window.LayoutUpdated += (_, _) => TryPlaceSettingsActions(window);
+            TryPlaceSettingsActions(window);
+
         }));
         _ = Task.Run(async () =>
         {
             try
             {
                 await Task.Delay(TimeSpan.FromSeconds(10));
-                if (CurrentVersion != "1.2.18" && Directory.Exists(BackupRoot))
-                {
-                    var rollback = Show("توجد نسخة احتياطية قبل التحديث. هل تريد الرجوع إلى الإصدار السابق من Amr.PDF؟ اختر لا للاستمرار بالإصدار الحالي.", MessageBoxButton.YesNo, MessageBoxImage.Question);
-                    if (rollback == MessageBoxResult.Yes) { RestorePreviousVersion(); return; }
-                }
                 if (ShouldCheck()) await CheckAsync();
             }
             catch (Exception ex) { Log("startup: " + ex); }
         });
+    }
+
+
+    private static bool _settingsActionsAdded;
+
+    private static void TryPlaceSettingsActions(Window window)
+    {
+        if (_settingsActionsAdded) return;
+        DependencyObject? label = FindSettingsAnchor(window);
+        if (label is null) return;
+
+        StackPanel? host = null;
+        for (DependencyObject? node = VisualTreeHelper.GetParent(label); node is not null; node = VisualTreeHelper.GetParent(node))
+        {
+            if (node is StackPanel stack && stack.Orientation == Orientation.Vertical)
+            {
+                host = stack;
+                break;
+            }
+        }
+        if (host is null) return;
+
+        var controls = new StackPanel
+        {
+            Orientation = Orientation.Vertical,
+            Margin = new Thickness(4, 12, 4, 4),
+            FlowDirection = FlowDirection.RightToLeft
+        };
+        var check = NewSettingsButton("البحث عن تحديثات الآن");
+        check.ToolTip = "التحقق فورًا من وجود تحديث (Ctrl + Shift + U)";
+        check.Click += (_, _) => { _ = CheckAsync(manual: true); };
+
+        var rollback = NewSettingsButton("العودة للنسخة السابقة");
+        rollback.ToolTip = "استعادة النسخة الاحتياطية التي سبقت آخر تحديث";
+        rollback.Click += (_, _) =>
+        {
+            if (!Directory.Exists(BackupRoot))
+            {
+                Show("لا توجد نسخة احتياطية سابقة على هذا الجهاز.", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            if (Show("هل تريد العودة للنسخة السابقة؟ سيتم إغلاق Amr.PDF وإعادة تشغيله بعد الاستعادة.",
+                MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+                RestorePreviousVersion();
+        };
+        controls.Children.Add(check);
+        controls.Children.Add(rollback);
+
+        // Add after the settings options in the existing vertical flow.
+        host.Children.Add(controls);
+        _settingsActionsAdded = true;
+    }
+
+    private static DependencyObject? FindSettingsAnchor(DependencyObject root)
+    {
+        if (root is TextBlock text && text.Text.Contains("يعمل في الخلفية", StringComparison.Ordinal))
+            return root;
+        if (root is ContentControl control && control.Content is string caption &&
+            caption.Contains("يعمل في الخلفية", StringComparison.Ordinal))
+            return root;
+        int count = VisualTreeHelper.GetChildrenCount(root);
+        for (int i = 0; i < count; i++)
+        {
+            var match = FindSettingsAnchor(VisualTreeHelper.GetChild(root, i));
+            if (match is not null) return match;
+        }
+        return null;
+    }
+
+    private static Button NewSettingsButton(string caption)
+    {
+        return new Button
+        {
+            Content = caption,
+            MinHeight = 38,
+            Margin = new Thickness(0, 5, 0, 5),
+            Padding = new Thickness(16, 8, 16, 8),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            HorizontalContentAlignment = HorizontalAlignment.Center,
+            FontSize = 13,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = Brushes.White,
+            Background = new SolidColorBrush(Color.FromRgb(91, 63, 111)),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(151, 108, 184)),
+            BorderThickness = new Thickness(1)
+        };
     }
 
     public static async Task CheckAsync(bool manual = false)
