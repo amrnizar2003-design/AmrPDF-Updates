@@ -27,9 +27,12 @@ public static class UpdateManager
         if (Interlocked.Exchange(ref _started, 1) != 0) return;
         Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
         {
-            var window = Application.Current.MainWindow;
-            if (window is null) return;
-            window.PreviewKeyDown += (_, e) =>
+            // Settings is a separate WPF window. Never insert update controls into MainWindow.
+            EventManager.RegisterClassHandler(typeof(Window), FrameworkElement.LoadedEvent,
+                new RoutedEventHandler(OnWindowLoaded), true);
+            foreach (Window open in Application.Current.Windows) TryInstallSettingsControls(open);
+            var home = Application.Current.MainWindow;
+            if (home is not null) home.PreviewKeyDown += (_, e) =>
             {
                 if (e.Key == Key.U && Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift))
                 {
@@ -37,10 +40,6 @@ public static class UpdateManager
                     _ = CheckAsync(manual: true);
                 }
             };
-            // Buttons belong inside Settings, not in the MainWindow overlay.
-            window.LayoutUpdated += (_, _) => TryPlaceSettingsActions(window);
-            TryPlaceSettingsActions(window);
-
         }));
         _ = Task.Run(async () =>
         {
@@ -54,88 +53,80 @@ public static class UpdateManager
     }
 
 
-    private static bool _settingsActionsAdded;
+    private static readonly HashSet<Window> SettingsWindowsReady = new();
 
-    private static void TryPlaceSettingsActions(Window window)
+    private static void OnWindowLoaded(object sender, RoutedEventArgs args)
     {
-        if (_settingsActionsAdded) return;
-        DependencyObject? label = FindSettingsAnchor(window);
-        if (label is null) return;
+        if (sender is Window window) TryInstallSettingsControls(window);
+    }
 
-        StackPanel? host = null;
-        for (DependencyObject? node = VisualTreeHelper.GetParent(label); node is not null; node = VisualTreeHelper.GetParent(node))
-        {
-            if (node is StackPanel stack && stack.Orientation == Orientation.Vertical)
-            {
-                host = stack;
-                break;
-            }
-        }
-        if (host is null) return;
+    private static void TryInstallSettingsControls(Window window)
+    {
+        // Use the real, existing SettingsWindow card and built-in SecondaryButton style.
+        if (window.GetType().FullName != "Dawwar.App.SettingsWindow" ||
+            SettingsWindowsReady.Contains(window)) return;
+        if (window.FindName("UpdateButton") is not Button original ||
+            original.Parent is not Grid oldRow ||
+            oldRow.Parent is not StackPanel cardContent ||
+            cardContent.Parent is not Border card) return;
 
-        var controls = new StackPanel
+        SettingsWindowsReady.Add(window);
+        card.Visibility = Visibility.Visible;
+        // Remove obsolete controls wired to the old update server without deleting
+        // named fields on the SettingsWindow instance.
+        while (cardContent.Children.Count > 1)
+            cardContent.Children.RemoveAt(1);
+
+        var guidance = new TextBlock
         {
-            Orientation = Orientation.Vertical,
-            Margin = new Thickness(4, 12, 4, 4),
-            FlowDirection = FlowDirection.RightToLeft
+            Text = "افحص وجود تحديث جديد مباشرةً، دون انتظار الفحص التلقائي.",
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 10, 0, 8),
+            Foreground = (Brush)window.FindResource("Muted"),
+            FontSize = 12
         };
-        var check = NewSettingsButton("البحث عن تحديثات الآن");
-        check.ToolTip = "التحقق فورًا من وجود تحديث (Ctrl + Shift + U)";
-        check.Click += (_, _) => { _ = CheckAsync(manual: true); };
+        cardContent.Children.Add(guidance);
 
-        var rollback = NewSettingsButton("العودة للنسخة السابقة");
-        rollback.ToolTip = "استعادة النسخة الاحتياطية التي سبقت آخر تحديث";
-        rollback.Click += (_, _) =>
+        var actions = new WrapPanel
+        {
+            Orientation = Orientation.Horizontal,
+            FlowDirection = FlowDirection.RightToLeft,
+            Margin = new Thickness(0, 6, 0, 0)
+        };
+        Button updates = MakeSettingsButton(window, "البحث عن تحديثات");
+        updates.Click += (_, _) => { _ = CheckAsync(manual: true); };
+        updates.ToolTip = "تحقق الآن (Ctrl + Shift + U)";
+        actions.Children.Add(updates);
+
+        Button previous = MakeSettingsButton(window, "العودة للنسخة السابقة");
+        previous.ToolTip = "استعادة آخر نسخة محفوظة قبل التحديث";
+        previous.Click += (_, _) =>
         {
             if (!Directory.Exists(BackupRoot))
             {
-                Show("لا توجد نسخة احتياطية سابقة على هذا الجهاز.", MessageBoxButton.OK, MessageBoxImage.Information);
+                Show("لا توجد نسخة سابقة محفوظة على هذا الجهاز.",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
-            if (Show("هل تريد العودة للنسخة السابقة؟ سيتم إغلاق Amr.PDF وإعادة تشغيله بعد الاستعادة.",
-                MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+            if (Show("هل تريد استعادة النسخة السابقة؟ سيُعاد تشغيل Amr.PDF.",
+                    MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
                 RestorePreviousVersion();
         };
-        controls.Children.Add(check);
-        controls.Children.Add(rollback);
-
-        // Add after the settings options in the existing vertical flow.
-        host.Children.Add(controls);
-        _settingsActionsAdded = true;
+        actions.Children.Add(previous);
+        cardContent.Children.Add(actions);
     }
 
-    private static DependencyObject? FindSettingsAnchor(DependencyObject root)
-    {
-        if (root is TextBlock text && text.Text.Contains("يعمل في الخلفية", StringComparison.Ordinal))
-            return root;
-        if (root is ContentControl control && control.Content is string caption &&
-            caption.Contains("يعمل في الخلفية", StringComparison.Ordinal))
-            return root;
-        int count = VisualTreeHelper.GetChildrenCount(root);
-        for (int i = 0; i < count; i++)
-        {
-            var match = FindSettingsAnchor(VisualTreeHelper.GetChild(root, i));
-            if (match is not null) return match;
-        }
-        return null;
-    }
-
-    private static Button NewSettingsButton(string caption)
+    private static Button MakeSettingsButton(Window settings, string caption)
     {
         return new Button
         {
             Content = caption,
-            MinHeight = 38,
-            Margin = new Thickness(0, 5, 0, 5),
-            Padding = new Thickness(16, 8, 16, 8),
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            HorizontalContentAlignment = HorizontalAlignment.Center,
-            FontSize = 13,
-            FontWeight = FontWeights.SemiBold,
-            Foreground = Brushes.White,
-            Background = new SolidColorBrush(Color.FromRgb(91, 63, 111)),
-            BorderBrush = new SolidColorBrush(Color.FromRgb(151, 108, 184)),
-            BorderThickness = new Thickness(1)
+            Style = (Style)settings.FindResource("SecondaryButton"),
+            Padding = new Thickness(14, 7, 14, 7),
+            MinHeight = 36,
+            Margin = new Thickness(0, 0, 10, 0),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Cursor = System.Windows.Input.Cursors.Hand
         };
     }
 
