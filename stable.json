@@ -1,9 +1,8 @@
 {
   "version": "1.2.18",
-  "packageUrl": "",
-  "sha256": "",
-  "sizeBytes": 0,
+  "packageUrl": "https://github.com/amrnizar2003-design/AmrPDF-Updates/releases/download/v1.2.18/Amr.PDF-Update-v1.2.18.zip",
+  "sha256": "4907c6807d31a0aceaf11de9f457c5dd2959360bf48711c6fefa0c5b7bc8db73",
+  "sizeBytes": 374078,
   "mandatory": false,
   "notesAr": "إضافة نظام التحديث التلقائي الآمن."
 }
-
