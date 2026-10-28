@@ -16,6 +16,7 @@ public static class UpdateManager
     private static int _started;
     private static readonly string DataRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Amr.PDF");
     private static readonly string StatePath = Path.Combine(DataRoot, "update-state.json");
+    private static readonly string BackupRoot = Path.Combine(DataRoot, "Backup", "previous");
     private static readonly string LogPath = Path.Combine(DataRoot, "logs", "updater.log");
 
     public static void Initialize()
@@ -26,6 +27,11 @@ public static class UpdateManager
             try
             {
                 await Task.Delay(TimeSpan.FromSeconds(10));
+                if (CurrentVersion != "1.2.18" && Directory.Exists(BackupRoot))
+                {
+                    var rollback = Show("توجد نسخة احتياطية قبل التحديث. هل تريد الرجوع إلى الإصدار السابق من Amr.PDF؟ اختر لا للاستمرار بالإصدار الحالي.", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                    if (rollback == MessageBoxResult.Yes) { RestorePreviousVersion(); return; }
+                }
                 if (ShouldCheck()) await CheckAsync();
             }
             catch (Exception ex) { Log("startup: " + ex); }
@@ -135,12 +141,41 @@ public static class UpdateManager
         string exe = Path.Combine(install, "Amr.PDF.exe");
         int pid = Environment.ProcessId;
         string script = Path.Combine(Path.GetTempPath(), "AmrPDF-Update-" + Guid.NewGuid().ToString("N") + ".ps1");
-        string body = $"$ErrorActionPreference='Stop'\n" +
+        // Backup only overwritten files; retain other installed files untouched.
+        string body = "$ErrorActionPreference='Stop'\n" +
                       $"Wait-Process -Id {pid} -ErrorAction SilentlyContinue\n" +
-                      $"Get-ChildItem -LiteralPath '{Ps(stage)}' -Force | Copy-Item -Destination '{Ps(install)}' -Recurse -Force\n" +
-                      $"Start-Process -FilePath '{Ps(exe)}'\n" +
-                      $"Remove-Item -LiteralPath '{Ps(stage)}' -Recurse -Force -ErrorAction SilentlyContinue\n" +
-                      "$me=$MyInvocation.MyCommand.Path; Start-Sleep -Milliseconds 300; Remove-Item -LiteralPath $me -Force -ErrorAction SilentlyContinue\n";
+                      $"$backup='{Ps(BackupRoot)}'; $install='{Ps(install)}'; $stage='{Ps(stage)}'\n" +
+                      "$pending=$backup+'.pending'; if(Test-Path -LiteralPath $pending){Remove-Item -LiteralPath $pending -Recurse -Force}\n" +
+                      "New-Item -ItemType Directory -Path $pending -Force | Out-Null\n" +
+                      "Get-ChildItem -LiteralPath $stage -Recurse -File | ForEach-Object {\n" +
+                      "  $relative=$_.FullName.Substring($stage.Length).TrimStart('\\'); $current=Join-Path $install $relative\n" +
+                      "  if(Test-Path -LiteralPath $current){ $saved=Join-Path $pending $relative; New-Item -ItemType Directory -Path (Split-Path $saved -Parent) -Force | Out-Null; Copy-Item -LiteralPath $current -Destination $saved -Force }\n" +
+                      "}\n" +
+                      "if(Test-Path -LiteralPath $backup){Remove-Item -LiteralPath $backup -Recurse -Force}\n" +
+                      "Move-Item -LiteralPath $pending -Destination $backup\n" +
+                      "try { Get-ChildItem -LiteralPath $stage -Force | Copy-Item -Destination $install -Recurse -Force } catch { Get-ChildItem -LiteralPath $backup -Force | Copy-Item -Destination $install -Recurse -Force; throw }\n" +
+                      $"Start-Process -FilePath '{Ps(exe)}'\n";
+        LaunchScript(script, body);
+    }
+
+    private static void RestorePreviousVersion()
+    {
+        string install = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar);
+        string exe = Path.Combine(install, "Amr.PDF.exe");
+        int pid = Environment.ProcessId;
+        string script = Path.Combine(Path.GetTempPath(), "AmrPDF-Rollback-" + Guid.NewGuid().ToString("N") + ".ps1");
+        string body = "$ErrorActionPreference='Stop'\n" +
+                      $"Wait-Process -Id {pid} -ErrorAction SilentlyContinue\n" +
+                      $"$backup='{Ps(BackupRoot)}'; $install='{Ps(install)}'\n" +
+                      "if(!(Test-Path -LiteralPath $backup)){throw 'Previous version backup not found'}\n" +
+                      "Get-ChildItem -LiteralPath $backup -Force | Copy-Item -Destination $install -Recurse -Force\n" +
+                      "Remove-Item -LiteralPath $backup -Recurse -Force\n" +
+                      $"Start-Process -FilePath '{Ps(exe)}'\n";
+        LaunchScript(script, body);
+    }
+
+    private static void LaunchScript(string script, string body)
+    {
         File.WriteAllText(script, body, new UTF8Encoding(true));
         Process.Start(new ProcessStartInfo
         {
