@@ -1,8 +1,8 @@
 {
-  "version": "0.3.11",
-  "packageUrl": "https://github.com/amrnizar2003-design/AmrPDF-Updates/releases/download/feah-v0.3.11/FEAH.PDF-Update-v0.3.11.zip",
-  "sha256": "2ce866b57784db3775f4ef4cf05f8e1baeae7480bd3cce9cc8f3377654993cc2",
-  "sizeBytes": 20155705,
+  "version": "0.3.12",
+  "packageUrl": "https://github.com/amrnizar2003-design/AmrPDF-Updates/releases/download/feah-v0.3.12/FEAH.PDF-Update-v0.3.12.zip",
+  "sha256": "8ccbfb87b63a0cd5f9f442c92c2cbf4e992fe198b6861f40f17d0dce3f30e983",
+  "sizeBytes": 21294407,
   "mandatory": false,
-  "notesAr": "إصلاح تحويل الصور إلى PDF وJPG ودمج الصور مع PDF، مع دعم أوسع لصيغ الصور."
+  "notesAr": "إصلاح عاجل لتحويل الصور إلى PDF ودمج PDF والصور وقراءة QR من الصور وPDF."
 }
