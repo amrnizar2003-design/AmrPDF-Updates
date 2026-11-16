@@ -1,8 +1,8 @@
 {
-  "version": "0.3.12",
-  "packageUrl": "https://github.com/amrnizar2003-design/AmrPDF-Updates/releases/download/feah-v0.3.12/FEAH.PDF-Update-v0.3.12.zip",
-  "sha256": "8ccbfb87b63a0cd5f9f442c92c2cbf4e992fe198b6861f40f17d0dce3f30e983",
-  "sizeBytes": 21294407,
+  "version": "0.3.13",
+  "packageUrl": "https://github.com/amrnizar2003-design/AmrPDF-Updates/releases/download/feah-v0.3.13/FEAH.PDF-Update-v0.3.13.zip",
+  "sha256": "7e39e3187784ca4031063989fe97ddcd0f9ba2db93c3e641616bec46e92c9690",
+  "sizeBytes": 21308819,
   "mandatory": false,
-  "notesAr": "إصلاح عاجل لتحويل الصور إلى PDF ودمج PDF والصور وقراءة QR من الصور وPDF."
+  "notesAr": "إضافة تصحيح لغة الكتابة عربي/إنجليزي للنص المحدد عبر Ctrl+Alt+K، وإضافة تدوير الصور وملفات PDF بزاوية 90 أو 180 درجة."
 }
