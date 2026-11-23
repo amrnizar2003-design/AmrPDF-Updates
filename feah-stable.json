@@ -1,8 +1,8 @@
 {
-  "version": "0.3.13",
-  "packageUrl": "https://github.com/amrnizar2003-design/AmrPDF-Updates/releases/download/feah-v0.3.13/FEAH.PDF-Update-v0.3.13.zip",
-  "sha256": "7e39e3187784ca4031063989fe97ddcd0f9ba2db93c3e641616bec46e92c9690",
-  "sizeBytes": 21308819,
+  "version": "0.3.14",
+  "packageUrl": "https://github.com/amrnizar2003-design/AmrPDF-Updates/releases/download/feah-v0.3.14/FEAH.PDF-Update-v0.3.14.zip",
+  "sha256": "aa7ca3617170262256a1ad80f7cc11fe77444d3a0771f427db162b2dd4cbaeef",
+  "sizeBytes": 21310974,
   "mandatory": false,
-  "notesAr": "إضافة تصحيح لغة الكتابة عربي/إنجليزي للنص المحدد عبر Ctrl+Alt+K، وإضافة تدوير الصور وملفات PDF بزاوية 90 أو 180 درجة."
+  "notesAr": "إصلاح تصحيح تخطيط الكيبورد عبر Ctrl+Alt+K وإضافة تدوير ملفات PDF مباشرة ضمن دائرة الأدوات."
 }
