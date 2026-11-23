@@ -1,8 +1,8 @@
 {
-  "version": "0.3.14",
-  "packageUrl": "https://github.com/amrnizar2003-design/AmrPDF-Updates/releases/download/feah-v0.3.14/FEAH.PDF-Update-v0.3.14.zip",
-  "sha256": "aa7ca3617170262256a1ad80f7cc11fe77444d3a0771f427db162b2dd4cbaeef",
-  "sizeBytes": 21310974,
+  "version": "0.3.15",
+  "packageUrl": "https://github.com/amrnizar2003-design/AmrPDF-Updates/releases/download/feah-v0.3.15/FEAH.PDF-Update-v0.3.15.zip",
+  "sha256": "70ce48ef31f3bfd552a639cde9252474bb436425cf946be82e02e41c14772c99",
+  "sizeBytes": 21311049,
   "mandatory": false,
-  "notesAr": "إصلاح تصحيح تخطيط الكيبورد عبر Ctrl+Alt+K وإضافة تدوير ملفات PDF مباشرة ضمن دائرة الأدوات."
+  "notesAr": "إصلاح تحويل النص الإنجليزي المكتوب بالخطأ عند تفعيل Caps Lock؛ الأحرف الكبيرة والصغيرة تتحول الآن إلى العربية الصحيحة بدل الرموز."
 }
